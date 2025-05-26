@@ -12,14 +12,67 @@
   represent the device's orientation on a conceptual 3D coordinate plane.
 */
 
+#include "I2Cdev.h"
+#include "MPU6050.h"
+#include <math.h>
 
+/* MPU6050 default I2C address is 0x68 */
+MPU6050 imu;
+
+
+/* MPU6050 raw data */
+int16_t ax_raw, ay_raw, az_raw;
+int16_t gx_raw, gy_raw, gz_raw;
+
+bool blinkState;
 
 void setup() {
-  // put your setup code here, to run once:
+  /*--Start I2C interface--*/
+  #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+    Wire.begin(); 
+  #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+    Fastwire::setup(400, true);
+  #endif
 
+  Serial.begin(38400); //Initializate Serial wo work well at 8MHz/16MHz
+
+  /* Initialize device and check connection */ 
+  Serial.println("Initializing MPU...");
+  imu.initialize();
+  Serial.println("Testing MPU6050 connection...");
+  if (imu.testConnection() ==  false) {
+    Serial.println("MPU6050 connection failed");
+    while(true); // Halt
+  } else {
+    Serial.println("MPU6050 connection successful");
+  }
+
+  /* Update sensor offset values */ 
+  Serial.println("Updating internal sensor offsets...\n");
+  imu.setXAccelOffset(0); //Set accelerometer offset for axis X
+  imu.setYAccelOffset(0); //Set accelerometer offset for axis Y
+  imu.setZAccelOffset(0); //Set accelerometer offset for axis Z
+  imu.setXGyroOffset(0);  //Set gyro offset for axis X
+  imu.setYGyroOffset(0);  //Set gyro offset for axis Y
+  imu.setZGyroOffset(0);  //Set gyro offset for axis Z
+
+  /*Configure board LED pin for output*/ 
+  pinMode(LED_BUILTIN, OUTPUT);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  /* Read raw accel/gyro data from the module */
+  imu.getMotion6(&ax_raw, &ay_raw, &az_raw, &gx_raw, &gy_raw, &gz_raw);
 
+  Serial.print("a/g:\t");
+  Serial.print(ax_raw); Serial.print("\t");
+  Serial.print(ay_raw); Serial.print("\t");
+  Serial.print(az_raw); Serial.print("\t");
+  Serial.print(gx_raw); Serial.print("\t");
+  Serial.print(gy_raw); Serial.print("\t");
+  Serial.println(gz_raw);
+
+  /*Blink LED to indicate activity*/
+  blinkState = !blinkState;
+  digitalWrite(LED_BUILTIN, blinkState);
 }
